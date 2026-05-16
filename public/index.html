@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jigsaw Arena</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">Original multiplayer puzzle platform</p><h1 id="appName">Jigsaw Arena</h1></div>
+    <nav>
+      <button data-view="play" class="active">Play</button>
+      <button data-view="tournaments">Tournaments</button>
+      <button data-view="wallet">Earnings</button>
+      <button data-view="admin" id="adminNav" hidden>Admin</button>
+    </nav>
+    <div id="accountBox" class="account"></div>
+  </header>
+  <main>
+    <section id="authPanel" class="card auth-grid">
+      <div><h2>Player registration</h2><p>Create a player account to save coins, tournament scores, ad rewards, and puzzle progress.</p></div>
+      <form id="registerForm"><input name="displayName" placeholder="Display name"><input name="username" placeholder="username" required><input name="password" type="password" placeholder="password (8+ chars)" required><button>Create player</button></form>
+      <form id="loginForm"><h3>Login</h3><input name="username" placeholder="username" required><input name="password" type="password" placeholder="password" required><button>Login</button><p class="hint">Owner admin default: owner / Owner@12345. Change with ADMIN_USER and ADMIN_PASS environment variables before first run.</p></form>
+    </section>
+    <section id="play" class="view active">
+      <div class="layout">
+        <aside class="card"><h2>1000 increasing levels</h2><p class="hint">Every level has a higher difficulty score than the previous one.</p><div class="level-controls"><button id="prevLevelsBtn" type="button">Prev</button><input id="levelJump" type="number" min="1" max="1000" value="1" aria-label="Jump to level"><button id="jumpLevelBtn" type="button">Jump</button><button id="nextLevelsBtn" type="button">Next</button></div><div id="puzzleList" class="list"></div></aside>
+        <section class="card game-card"><div class="game-head"><div><h2 id="puzzleTitle">Choose a puzzle</h2><p id="gameMeta">Select a puzzle to start.</p></div><div class="stats"><span id="timer">00:00</span><span id="pieceCount">0/0</span></div></div><canvas id="board" width="900" height="560" aria-label="Jigsaw puzzle board"></canvas><div class="actions"><button id="shuffleBtn">Shuffle</button><button id="hintBtn">Hint</button><button id="submitScoreBtn">Submit Score</button></div></section>
+      </div>
+    </section>
+    <section id="tournaments" class="view"><div class="card"><h2>Multiplayer tournaments</h2><p>Players compete asynchronously on the same puzzle. Fastest completion wins the top leaderboard position.</p><div id="tournamentList" class="list"></div></div></section>
+    <section id="wallet" class="view"><div class="card"><h2>Wallet & earning system</h2><div id="walletInfo" class="wallet"></div><button id="watchAdBtn">Watch rewarded ad</button><p class="hint">Ad views are simulated for development. Connect your real ad network SDK before production release.</p></div></section>
+    <section id="admin" class="view"><div class="card"><h2>Owner admin panel</h2><p>Only admin accounts can open these controls. Manage app settings, puzzles, tournaments, monetisation values, and user stats.</p><div id="adminStats" class="admin-grid"></div><form id="settingsForm" class="inline-form"><input name="appName" placeholder="App name"><input name="coinsPerPuzzle" type="number" placeholder="Coins / puzzle"><input name="coinsPerAd" type="number" placeholder="Coins / ad"><input name="entryFee" type="number" placeholder="Entry fee"><input name="adEveryPieces" type="number" placeholder="Ad every pieces"><button>Save settings</button></form><h3>Add or update puzzle</h3><form id="puzzleForm" class="inline-form"><input name="title" placeholder="Title"><input name="category" placeholder="Category"><input name="difficulty" placeholder="Difficulty"><input name="rows" type="number" min="2" max="8" placeholder="Rows"><input name="cols" type="number" min="2" max="8" placeholder="Cols"><input name="palette" placeholder="#4568dc,#b06ab3,#fff"><button>Save puzzle</button></form><h3>Add tournament</h3><form id="tournamentForm" class="inline-form"><input name="name" placeholder="Tournament name"><select name="puzzleId" id="adminPuzzleSelect"></select><input name="prizeCoins" type="number" placeholder="Prize coins"><button>Save tournament</button></form></div></section>
+  </main>
+  <div id="adModal" class="modal" hidden><div class="ad-box"><p class="eyebrow">Sponsored break</p><h2>Rewarded Ad</h2><p>Thanks for supporting the game. Your reward will be credited in a moment.</p><div class="progress"><span></span></div></div></div>
+  <div id="toast" role="status"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

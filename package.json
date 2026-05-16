@@ -1,0 +1,14 @@
+{
+  "name": "jigsaw-arena",
+  "version": "1.0.0",
+  "description": "Original multiplayer jigsaw puzzle tournament web app with admin controls and monetization simulation.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "UNLICENSED"
+}
