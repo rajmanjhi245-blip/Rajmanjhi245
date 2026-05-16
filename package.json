@@ -1,0 +1,12 @@
+{
+  "name": "raj-ludo-arena",
+  "version": "1.0.0",
+  "description": "Original Ludo-style multiplayer tournament web app prototype with admin, player registration, and compliance-safe wallet flows.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 4173",
+    "test": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
