@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ColorQuest Studio</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="toast" aria-live="polite"></div>
+  <header class="hero">
+    <nav>
+      <div class="brand"><span>🎨</span> ColorQuest Studio</div>
+      <div class="nav-actions">
+        <span id="sessionLabel">Guest</span>
+        <button id="logoutBtn" class="ghost hidden">Logout</button>
+      </div>
+    </nav>
+    <section>
+      <p class="eyebrow">Original paint-by-number game</p>
+      <h1>Relax with numbered coloring pages you control.</h1>
+      <p>Players register, save progress, and color original SVG art. The owner-only admin panel edits, publishes, and removes content.</p>
+    </section>
+  </header>
+
+  <main>
+    <section id="authView" class="card auth-grid">
+      <div>
+        <h2>Player registration</h2>
+        <p>Create a player account to access the coloring gallery and save each picture.</p>
+        <form id="registerForm">
+          <label>Username <input name="username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" /></label>
+          <label>Password <input name="password" type="password" required minlength="6" /></label>
+          <button type="submit">Register player</button>
+        </form>
+      </div>
+      <div>
+        <h2>Sign in</h2>
+        <p>Use your player account, or the owner admin account to open the admin panel.</p>
+        <form id="loginForm">
+          <label>Username <input name="username" required /></label>
+          <label>Password <input name="password" type="password" required /></label>
+          <button type="submit">Login</button>
+        </form>
+        <p id="devAdminHint" class="hint"></p>
+      </div>
+    </section>
+
+    <section id="gameView" class="hidden">
+      <div class="toolbar card">
+        <div>
+          <p class="eyebrow">Gallery</p>
+          <h2>Choose a picture</h2>
+        </div>
+        <input id="searchInput" placeholder="Search category, title, or difficulty" />
+      </div>
+      <div class="gallery-summary"><span id="galleryCount">0 levels</span><span id="galleryPageLabel">Page 1</span></div>
+      <div id="gallery" class="gallery"></div>
+      <div class="pager card"><button id="prevPage" class="ghost">Previous levels</button><button id="nextPage" class="ghost">Next levels</button></div>
+      <section id="playerPanel" class="card painter hidden">
+        <div class="painter-header">
+          <div>
+            <p class="eyebrow" id="activeCategory"></p>
+            <h2 id="activeTitle"></h2>
+            <p id="activeDescription"></p>
+          </div>
+          <button id="closePainter" class="ghost">Close</button>
+        </div>
+        <div class="paint-layout">
+          <div id="canvasWrap" class="canvas-wrap"></div>
+          <aside>
+            <h3>Palette</h3>
+            <div id="palette" class="palette"></div>
+            <div class="meter"><span id="progressBar"></span></div>
+            <p id="progressText">0% complete</p>
+            <button id="saveProgress">Save progress</button>
+            <button id="resetProgress" class="ghost">Reset this picture</button>
+          </aside>
+        </div>
+      </section>
+    </section>
+
+    <section id="adminPanel" class="card hidden">
+      <div class="admin-heading">
+        <div>
+          <p class="eyebrow">Owner only</p>
+          <h2>Admin content control panel</h2>
+          <p>Edit all coloring pages and review registered players. Only admin users can call these APIs.</p>
+        </div>
+        <button id="newPageBtn">New page</button>
+      </div>
+      <div class="admin-grid">
+        <form id="pageForm">
+          <input type="hidden" name="id" />
+          <label>Title <input name="title" required /></label>
+          <label>Category <input name="category" required /></label>
+          <label>Difficulty <select name="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select></label>
+          <label>Description <textarea name="description" rows="3"></textarea></label>
+          <label>Palette colors (comma separated hex) <input name="palette" placeholder="#ffcf33, #5ed3f3" required /></label>
+          <label>SVG markup with <code>paint-region</code> shapes <textarea name="svg" rows="9" required></textarea></label>
+          <button type="submit">Save page</button>
+        </form>
+        <div>
+          <h3>Published pages</h3>
+          <div id="adminPages" class="admin-list"></div>
+          <h3>Registered players</h3>
+          <div id="adminUsers" class="admin-list"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "colorquest-studio",
+  "version": "1.0.0",
+  "description": "Original color-by-number web game with player registration and an owner-only admin panel.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "NODE_ENV=development node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
