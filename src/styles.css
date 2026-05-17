@@ -93,3 +93,8 @@ th { color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spaci
 @media (max-width: 860px) {
   .structure-grid { grid-template-columns: 1fr; }
 }
+.alert-history, .accuracy-backtest { border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.78); box-shadow: 0 20px 80px rgba(0, 0, 0, 0.28); backdrop-filter: blur(18px); border-radius: 24px; padding: 24px; margin: 28px 0; }
+.accuracy-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+@media (max-width: 860px) {
+  .accuracy-grid { grid-template-columns: 1fr; }
+}

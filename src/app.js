@@ -1,6 +1,6 @@
+import { buildAccuracyBacktest, buildAlertHistory, buildTradingSignals } from './alertEngine.js';
 import { runBacktest, runMonteCarloSimulation } from './backtestEngine.js';
-import { analyzeMarketStructure } from './marketStructureEngine.js';
-import { MARKET_SEGMENTS, TIMEFRAMES, buildSignals, summarizeSignals } from './signalEngine.js';
+import { MARKET_SEGMENTS, TIMEFRAMES, summarizeSignals } from './signalEngine.js';
 import { STRATEGY_PRESETS, buildStrategy, describeStrategy } from './strategyEngine.js';
 
 const segmentSelect = document.querySelector('#segment');
@@ -28,6 +28,8 @@ const backtestMetrics = document.querySelector('#backtestMetrics');
 const tradeTable = document.querySelector('#tradeTable');
 const simulationOutput = document.querySelector('#simulationOutput');
 const structureDashboard = document.querySelector('#structureDashboard');
+const alertHistoryEl = document.querySelector('#alertHistory');
+const accuracyBacktestEl = document.querySelector('#accuracyBacktest');
 
 let latestBacktest = null;
 
@@ -89,7 +91,7 @@ function currentSeed() {
 function renderSignals() {
   const seed = currentSeed();
   const strategy = currentStrategy();
-  const signals = buildSignals({
+  const signals = buildTradingSignals({
     segmentId: segmentSelect.value,
     timeframe: timeframeSelect.value,
     seed,
@@ -105,10 +107,8 @@ function renderSignals() {
     ? `Live sentiment simulator refreshed at ${new Date().toLocaleTimeString('en-IN')}. Connect licensed market feeds for production execution.`
     : `Scenario seed ${seed} loaded for deterministic replay and testing.`;
 
-  const structures = signals.map((signal) => ({
-    signal,
-    structure: analyzeMarketStructure({ seed: signal.sourceSeed, basePrice: signal.entry, volatility: Math.max(0.7, signal.confidence / 35) }),
-  }));
+  const structures = signals.map((signal) => ({ signal, structure: signal.structure }));
+  trackOpenAlerts(signals);
 
   renderStructureDashboard(structures);
 
@@ -137,6 +137,9 @@ function renderSignals() {
         <span>BOS: ${structure.breakOfStructure.direction}</span>
         <span>${structure.breakout.type} breakout</span>
         <span>FVG: ${structure.latestFvg ? `${structure.latestFvg.direction} ${structure.latestFvg.status}` : 'none'}</span>
+        <span>RSI ${signal.indicators.rsi}</span>
+        <span>MACD ${signal.indicators.macdBias}</span>
+        <span>${signal.setupTags.join(' + ')}</span>
       </div>
       <p class="rationale"><strong>Risk ${signal.riskGrade}</strong> · ${signal.confidence}% · ${signal.rationale}</p>
       <p class="rationale"><strong>Structure:</strong> ${structure.summary}</p>
@@ -215,6 +218,124 @@ function renderFvgCard(gap) {
   `;
 }
 
+function currentRequest() {
+  return {
+    segmentId: segmentSelect.value,
+    timeframe: timeframeSelect.value,
+    seed: Number(seedInput.value || 1),
+    strategy: currentStrategy(),
+    periods: 36,
+  };
+}
+
+function trackOpenAlerts(signals) {
+  const tracked = readTrackedAlerts();
+  const nextAlerts = signals
+    .filter((signal) => signal.action !== 'WAIT')
+    .map((signal) => ({
+      id: signal.id,
+      symbol: signal.symbol,
+      segment: signal.segment,
+      timeframe: signal.timeframe,
+      action: signal.action,
+      entry: signal.entry,
+      confidence: signal.confidence,
+      outcome: 'OPEN',
+      setupTags: signal.setupTags,
+      openedAt: new Date().toISOString(),
+    }));
+  const merged = [...nextAlerts, ...tracked]
+    .filter((alert, index, alerts) => alerts.findIndex((item) => item.id === alert.id) === index)
+    .slice(0, 40);
+  localStorage.setItem('institutionalSignalAlerts', JSON.stringify(merged));
+}
+
+function readTrackedAlerts() {
+  try {
+    return JSON.parse(localStorage.getItem('institutionalSignalAlerts') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function renderAlertAnalytics() {
+  const completedHistory = buildAlertHistory(currentRequest());
+  const tracked = readTrackedAlerts();
+  const alerts = [...tracked, ...completedHistory].slice(0, 80);
+  const accuracy = buildAccuracyBacktest(completedHistory);
+  renderAlertHistory(alerts);
+  renderAccuracyBacktest(accuracy);
+}
+
+function renderAlertHistory(alerts) {
+  alertHistoryEl.innerHTML = `
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Alert history</p>
+        <h2>Tracked trading signal alerts</h2>
+        <p>Open alerts are tracked locally; completed historical alerts are replayed deterministically for review.</p>
+      </div>
+    </div>
+    <div class="trade-table">
+      <table>
+        <thead><tr><th>Time</th><th>Symbol</th><th>Signal</th><th>Entry</th><th>Conf.</th><th>Outcome</th><th>R</th><th>Setups</th></tr></thead>
+        <tbody>
+          ${alerts.slice(0, 18).map((alert) => `
+            <tr>
+              <td>${new Date(alert.openedAt).toLocaleString('en-IN')}</td>
+              <td>${alert.symbol}</td>
+              <td>${alert.action}</td>
+              <td>${formatValue(alert.entry)}</td>
+              <td>${alert.confidence}%</td>
+              <td>${alert.outcome}</td>
+              <td>${formatValue(alert.rMultiple)}</td>
+              <td>${(alert.setupTags || []).join(', ')}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderAccuracyBacktest(accuracy) {
+  const setupRows = accuracy.bySetup.filter((row) => row.count > 0);
+  accuracyBacktestEl.innerHTML = `
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Signal accuracy backtest</p>
+        <h2>Predicted confidence vs historical alert outcomes</h2>
+        <p>Compare each setup's actual win rate against the confidence model that generated the original alert.</p>
+      </div>
+    </div>
+    <div class="metrics compact">
+      <article><span>${accuracy.totalAlerts}</span><small>Completed alerts</small></article>
+      <article><span>${accuracy.overall.predictedWinRate}%</span><small>Predicted win rate</small></article>
+      <article><span>${accuracy.overall.actualWinRate}%</span><small>Actual win rate</small></article>
+      <article><span>${accuracy.overall.calibrationError}%</span><small>Calibration error</small></article>
+      <article><span>${accuracy.overall.avgR}R</span><small>Average R</small></article>
+      <article><span>${accuracy.overall.avgConfidence}%</span><small>Avg confidence</small></article>
+    </div>
+    <div class="accuracy-grid">
+      ${setupRows.map((row) => renderAccuracyCard(row)).join('')}
+    </div>
+    <div class="accuracy-grid">
+      ${accuracy.byConfidenceBucket.map((row) => renderAccuracyCard(row)).join('')}
+    </div>
+  `;
+}
+
+function renderAccuracyCard(row) {
+  return `
+    <article class="structure-card">
+      <small>${row.label}</small>
+      <strong>${row.actualWinRate}% actual</strong>
+      <span>${row.predictedWinRate}% predicted · ${row.count} alerts</span>
+      <p>${row.calibrationError}% calibration error · ${row.avgR}R average outcome.</p>
+    </article>
+  `;
+}
+
 function runStrategyBacktest() {
   latestBacktest = runBacktest({
     segmentId: segmentSelect.value,
@@ -226,6 +347,7 @@ function runStrategyBacktest() {
   });
   renderBacktest(latestBacktest);
   renderSimulation(runMonteCarloSimulation(latestBacktest, { paths: 250, seed: Number(seedInput.value || 1) + 500 }));
+  renderAlertAnalytics();
 }
 
 function renderBacktest(result) {
@@ -271,14 +393,14 @@ function renderSimulation(simulation) {
 populateControls();
 renderSignals();
 runStrategyBacktest();
-refreshButton.addEventListener('click', renderSignals);
+refreshButton.addEventListener('click', () => { renderSignals(); renderAlertAnalytics(); });
 segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
 timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
 seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); });
-liveMode.addEventListener('change', renderSignals);
+liveMode.addEventListener('change', () => { renderSignals(); renderAlertAnalytics(); });
 presetSelect.addEventListener('change', () => { applyPreset(presetSelect.value); renderSignals(); runStrategyBacktest(); });
 [minConfidenceInput, minLiquidityInput, maxSpreadInput, riskRewardInput, riskPerTradeInput, maxTradesInput].forEach((input) => {
-  input.addEventListener('input', () => { updateStrategyDescription(); renderSignals(); });
+  input.addEventListener('input', () => { updateStrategyDescription(); renderSignals(); renderAlertAnalytics(); });
 });
 backtestButton.addEventListener('click', runStrategyBacktest);
 simulationButton.addEventListener('click', () => {
@@ -286,5 +408,8 @@ simulationButton.addEventListener('click', () => {
   renderSimulation(runMonteCarloSimulation(latestBacktest, { paths: 500, seed: Number(seedInput.value || 1) + 900 }));
 });
 setInterval(() => {
-  if (liveMode.checked) renderSignals();
+  if (liveMode.checked) {
+    renderSignals();
+    renderAlertAnalytics();
+  }
 }, 30_000);
