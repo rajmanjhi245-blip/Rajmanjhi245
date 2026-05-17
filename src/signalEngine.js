@@ -21,8 +21,8 @@ export const MARKET_SEGMENTS = [
 
 export const TIMEFRAMES = ['1m', '3m', '5m', '15m', '1h', '4h', '1D', '1W'];
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-const round = (value, precision = 2) => Number(value.toFixed(precision));
+export const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+export const round = (value, precision = 2) => Number(value.toFixed(precision));
 
 export function seededNoise(seed, offset = 0) {
   const x = Math.sin(seed * 999 + offset * 131.17) * 10000;
@@ -57,11 +57,12 @@ export function createMarketSnapshot({ symbol, segment, timeframe, seed = Date.n
   };
 }
 
-export function analyzeSignal(snapshot) {
-  const flowWeight = 0.34;
-  const trendWeight = 0.28;
-  const sentimentWeight = 0.2;
-  const skewWeight = 0.18;
+export function analyzeSignal(snapshot, strategy = {}) {
+  const weights = strategy.weights || {};
+  const flowWeight = weights.flow ?? 0.34;
+  const trendWeight = weights.trend ?? 0.28;
+  const sentimentWeight = weights.sentiment ?? 0.2;
+  const skewWeight = weights.skew ?? 0.18;
   const composite =
     snapshot.institutionalFlow * flowWeight +
     snapshot.trend * trendWeight +
@@ -72,9 +73,10 @@ export function analyzeSignal(snapshot) {
   const rawConfidence = Math.abs(composite) * 100 - qualityPenalty * 100 + snapshot.liquidityScore * 0.16;
   const confidence = round(clamp(rawConfidence, 0, 99));
 
-  const minConfidence = 63;
-  const minLiquidity = 45;
-  const action = confidence < minConfidence || snapshot.liquidityScore < minLiquidity
+  const minConfidence = strategy.minConfidence ?? 63;
+  const minLiquidity = strategy.minLiquidity ?? 45;
+  const maxSpreadRisk = strategy.maxSpreadRisk ?? 100;
+  const action = confidence < minConfidence || snapshot.liquidityScore < minLiquidity || snapshot.spreadRisk > maxSpreadRisk
     ? 'WAIT'
     : composite > 0
       ? 'BUY'
@@ -124,7 +126,7 @@ function buildRationale(snapshot, composite, action) {
   return `Composite ${round(composite, 3)} from ${drivers.join(', ')}.`;
 }
 
-export function buildSignals({ segmentId = 'india-equity', timeframe = '15m', seed = Date.now() / 60000 } = {}) {
+export function buildSignals({ segmentId = 'india-equity', timeframe = '15m', seed = Date.now() / 60000, strategy = {} } = {}) {
   const segment = MARKET_SEGMENTS.find((item) => item.id === segmentId) || MARKET_SEGMENTS[0];
   return segment.assets.map((symbol, index) => {
     const snapshot = createMarketSnapshot({
@@ -133,7 +135,7 @@ export function buildSignals({ segmentId = 'india-equity', timeframe = '15m', se
       timeframe,
       seed: seed + index * 17 + segment.id.length,
     });
-    return analyzeSignal(snapshot);
+    return analyzeSignal(snapshot, strategy);
   });
 }
 

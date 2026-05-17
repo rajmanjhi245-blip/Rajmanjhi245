@@ -51,3 +51,27 @@ dd { margin: 4px 0 0; font-weight: 900; }
   .hero, .controls, .metrics, .grid { grid-template-columns: 1fr; }
   .levels { grid-template-columns: repeat(2, 1fr); }
 }
+.strategy-builder, .backtest-panel { border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.78); box-shadow: 0 20px 80px rgba(0, 0, 0, 0.28); backdrop-filter: blur(18px); border-radius: 24px; padding: 24px; margin: 28px 0; }
+.builder-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.panel-heading { display: flex; justify-content: space-between; align-items: end; gap: 18px; }
+.panel-heading h2, .strategy-builder h2 { margin: 0 0 10px; font-size: clamp(1.7rem, 4vw, 2.8rem); }
+.panel-heading p { color: #94a3b8; margin-bottom: 0; }
+.panel-actions { display: flex; gap: 12px; min-width: 320px; }
+.compact { margin-top: 18px; grid-template-columns: repeat(6, 1fr); }
+.compact article { border-bottom: 1px solid rgba(148, 163, 184, 0.15); }
+.compact span { font-size: 1.35rem; }
+.simulation-output { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 18px 0; }
+.simulation-output article { border: 1px solid rgba(148, 163, 184, 0.14); background: rgba(2, 6, 23, 0.4); border-radius: 18px; padding: 16px; }
+.simulation-output span { display: block; font-size: 1.3rem; font-weight: 900; }
+.simulation-output small { color: #94a3b8; }
+.trade-table { overflow-x: auto; border-radius: 18px; border: 1px solid rgba(148, 163, 184, 0.14); }
+table { width: 100%; border-collapse: collapse; min-width: 820px; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+th { color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
+.empty-state { padding: 18px; color: #94a3b8; }
+
+@media (max-width: 860px) {
+  .builder-controls, .compact, .simulation-output { grid-template-columns: 1fr; }
+  .panel-heading { align-items: stretch; flex-direction: column; }
+  .panel-actions { min-width: 0; flex-direction: column; }
+}

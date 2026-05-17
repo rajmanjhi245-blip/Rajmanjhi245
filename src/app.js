@@ -1,4 +1,6 @@
+import { runBacktest, runMonteCarloSimulation } from './backtestEngine.js';
 import { MARKET_SEGMENTS, TIMEFRAMES, buildSignals, summarizeSignals } from './signalEngine.js';
+import { STRATEGY_PRESETS, buildStrategy, describeStrategy } from './strategyEngine.js';
 
 const segmentSelect = document.querySelector('#segment');
 const timeframeSelect = document.querySelector('#timeframe');
@@ -11,6 +13,21 @@ const buyCount = document.querySelector('#buyCount');
 const sellCount = document.querySelector('#sellCount');
 const waitCount = document.querySelector('#waitCount');
 const avgConfidence = document.querySelector('#avgConfidence');
+const presetSelect = document.querySelector('#strategyPreset');
+const minConfidenceInput = document.querySelector('#minConfidence');
+const minLiquidityInput = document.querySelector('#minLiquidity');
+const maxSpreadInput = document.querySelector('#maxSpreadRisk');
+const riskRewardInput = document.querySelector('#riskReward');
+const riskPerTradeInput = document.querySelector('#riskPerTrade');
+const maxTradesInput = document.querySelector('#maxTrades');
+const strategyDescription = document.querySelector('#strategyDescription');
+const backtestButton = document.querySelector('#runBacktest');
+const simulationButton = document.querySelector('#runSimulation');
+const backtestMetrics = document.querySelector('#backtestMetrics');
+const tradeTable = document.querySelector('#tradeTable');
+const simulationOutput = document.querySelector('#simulationOutput');
+
+let latestBacktest = null;
 
 function populateControls() {
   segmentSelect.innerHTML = MARKET_SEGMENTS
@@ -19,11 +36,47 @@ function populateControls() {
   timeframeSelect.innerHTML = TIMEFRAMES
     .map((timeframe) => `<option value="${timeframe}" ${timeframe === '15m' ? 'selected' : ''}>${timeframe}</option>`)
     .join('');
+  presetSelect.innerHTML = Object.values(STRATEGY_PRESETS)
+    .map((preset) => `<option value="${preset.id}">${preset.name}</option>`)
+    .join('');
+  applyPreset('balanced');
+}
+
+function applyPreset(presetId) {
+  const preset = STRATEGY_PRESETS[presetId] || STRATEGY_PRESETS.balanced;
+  minConfidenceInput.value = preset.minConfidence;
+  minLiquidityInput.value = preset.minLiquidity;
+  maxSpreadInput.value = preset.maxSpreadRisk;
+  riskRewardInput.value = preset.riskReward;
+  riskPerTradeInput.value = preset.riskPerTrade;
+  maxTradesInput.value = preset.maxTrades;
+  updateStrategyDescription();
+}
+
+function currentStrategy() {
+  return buildStrategy({
+    preset: presetSelect.value,
+    minConfidence: minConfidenceInput.value,
+    minLiquidity: minLiquidityInput.value,
+    maxSpreadRisk: maxSpreadInput.value,
+    riskReward: riskRewardInput.value,
+    riskPerTrade: riskPerTradeInput.value,
+    maxTrades: maxTradesInput.value,
+  });
+}
+
+function updateStrategyDescription() {
+  strategyDescription.textContent = describeStrategy(currentStrategy());
 }
 
 function formatValue(value) {
   if (value === null || value === undefined) return '—';
+  if (value === Infinity) return '∞';
   return Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(value);
+}
+
+function formatMoney(value) {
+  return Intl.NumberFormat('en-IN', { maximumFractionDigits: 0, style: 'currency', currency: 'INR' }).format(value);
 }
 
 function currentSeed() {
@@ -33,10 +86,12 @@ function currentSeed() {
 
 function renderSignals() {
   const seed = currentSeed();
+  const strategy = currentStrategy();
   const signals = buildSignals({
     segmentId: segmentSelect.value,
     timeframe: timeframeSelect.value,
     seed,
+    strategy,
   });
   const summary = summarizeSignals(signals);
 
@@ -73,13 +128,76 @@ function renderSignals() {
   `).join('');
 }
 
+function runStrategyBacktest() {
+  latestBacktest = runBacktest({
+    segmentId: segmentSelect.value,
+    timeframe: timeframeSelect.value,
+    seed: Number(seedInput.value || 1),
+    strategy: currentStrategy(),
+    bars: 180,
+    startingCapital: 100000,
+  });
+  renderBacktest(latestBacktest);
+  renderSimulation(runMonteCarloSimulation(latestBacktest, { paths: 250, seed: Number(seedInput.value || 1) + 500 }));
+}
+
+function renderBacktest(result) {
+  backtestMetrics.innerHTML = `
+    <article><span>${formatMoney(result.endingCapital)}</span><small>Ending capital</small></article>
+    <article><span>${formatValue(result.totalReturn)}%</span><small>Total return</small></article>
+    <article><span>${formatValue(result.winRate)}%</span><small>Win rate</small></article>
+    <article><span>${formatValue(result.maxDrawdown)}%</span><small>Max drawdown</small></article>
+    <article><span>${formatValue(result.profitFactor)}</span><small>Profit factor</small></article>
+    <article><span>${formatValue(result.expectancyR)}R</span><small>Expectancy</small></article>
+  `;
+  tradeTable.innerHTML = result.trades.length ? `
+    <table>
+      <thead><tr><th>#</th><th>Action</th><th>Entry</th><th>Exit</th><th>Conf.</th><th>R</th><th>P&L</th><th>Reason</th></tr></thead>
+      <tbody>
+        ${result.trades.slice(0, 12).map((trade) => `
+          <tr>
+            <td>${trade.id}</td>
+            <td>${trade.action}</td>
+            <td>${formatValue(trade.entry)}</td>
+            <td>${formatValue(trade.exit)}</td>
+            <td>${trade.confidence}%</td>
+            <td>${trade.rMultiple}</td>
+            <td>${formatMoney(trade.pnl)}</td>
+            <td>${trade.reason}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  ` : '<p class="empty-state">No trades passed the strategy filters in this backtest window.</p>';
+}
+
+function renderSimulation(simulation) {
+  simulationOutput.innerHTML = `
+    <article><span>${formatValue(simulation.probabilityPositive)}%</span><small>Positive-path probability</small></article>
+    <article><span>${formatValue(simulation.medianReturn)}%</span><small>Median return</small></article>
+    <article><span>${formatValue(simulation.worstReturn)}%</span><small>Worst path</small></article>
+    <article><span>${formatValue(simulation.bestReturn)}%</span><small>Best path</small></article>
+    <article><span>${formatMoney(simulation.projectedCapital)}</span><small>Median projected capital</small></article>
+  `;
+}
+
 populateControls();
 renderSignals();
+runStrategyBacktest();
 refreshButton.addEventListener('click', renderSignals);
-segmentSelect.addEventListener('change', renderSignals);
-timeframeSelect.addEventListener('change', renderSignals);
-seedInput.addEventListener('input', renderSignals);
+segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
+timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
+seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); });
 liveMode.addEventListener('change', renderSignals);
+presetSelect.addEventListener('change', () => { applyPreset(presetSelect.value); renderSignals(); runStrategyBacktest(); });
+[minConfidenceInput, minLiquidityInput, maxSpreadInput, riskRewardInput, riskPerTradeInput, maxTradesInput].forEach((input) => {
+  input.addEventListener('input', () => { updateStrategyDescription(); renderSignals(); });
+});
+backtestButton.addEventListener('click', runStrategyBacktest);
+simulationButton.addEventListener('click', () => {
+  if (!latestBacktest) runStrategyBacktest();
+  renderSimulation(runMonteCarloSimulation(latestBacktest, { paths: 500, seed: Number(seedInput.value || 1) + 900 }));
+});
 setInterval(() => {
   if (liveMode.checked) renderSignals();
 }, 30_000);

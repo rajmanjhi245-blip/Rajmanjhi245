@@ -57,6 +57,40 @@
 
       <section class="grid" id="signals" aria-live="polite"></section>
 
+      <section class="strategy-builder" aria-label="Strategy builder">
+        <div>
+          <p class="eyebrow">Strategy builder</p>
+          <h2>Build rules before signals are trusted</h2>
+          <p id="strategyDescription" class="hero-copy"></p>
+        </div>
+        <div class="builder-controls">
+          <label>Preset <select id="strategyPreset"></select></label>
+          <label>Min confidence <input id="minConfidence" type="number" min="1" max="99" /></label>
+          <label>Min liquidity <input id="minLiquidity" type="number" min="1" max="100" /></label>
+          <label>Max spread risk <input id="maxSpreadRisk" type="number" min="1" max="100" /></label>
+          <label>Risk/reward <input id="riskReward" type="number" min="0.25" max="5" step="0.05" /></label>
+          <label>Risk per trade % <input id="riskPerTrade" type="number" min="0.1" max="5" step="0.05" /></label>
+          <label>Max trades <input id="maxTrades" type="number" min="1" max="100" /></label>
+        </div>
+      </section>
+
+      <section class="backtest-panel" aria-label="Backtest and simulation">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Backtest + simulation</p>
+            <h2>Replay strategy rules over synthetic market history</h2>
+            <p>Backtests and Monte Carlo simulations are educational estimates, not guarantees of future performance.</p>
+          </div>
+          <div class="panel-actions">
+            <button id="runBacktest" type="button">Run Backtest</button>
+            <button id="runSimulation" type="button">Run Simulation</button>
+          </div>
+        </div>
+        <div class="metrics compact" id="backtestMetrics"></div>
+        <div class="simulation-output" id="simulationOutput"></div>
+        <div class="trade-table" id="tradeTable"></div>
+      </section>
+
       <section class="framework">
         <h2>Institutional-grade checks</h2>
         <ul>
