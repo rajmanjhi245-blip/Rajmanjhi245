@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { buildAccuracyBacktest, buildAlertHistory, buildTradingSignals, listMarketSegments } from './src/alertEngine.js';
+import { createCustomAlertRule, createPortfolioTrade, deleteCustomAlertRule, deletePortfolioTrade, evaluateCustomAlertRules, listCustomAlertRules, listPortfolioTrades, summarizePortfolio } from './src/databaseEngine.js';
 import { buildStrategy } from './src/strategyEngine.js';
 
 const port = Number(process.env.PORT || 4173);
@@ -17,7 +18,7 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
 
   if (url.pathname.startsWith('/api/')) {
-    handleApi(url, res);
+    await handleApi(req, url, res);
     return;
   }
 
@@ -35,7 +36,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-function handleApi(url, res) {
+async function handleApi(req, url, res) {
   try {
     const request = parseSignalRequest(url);
     if (url.pathname === '/api/market-data') {
@@ -54,6 +55,40 @@ function handleApi(url, res) {
     if (url.pathname === '/api/accuracy-backtest') {
       const alerts = buildAlertHistory(request);
       writeJson(res, { alerts, accuracy: buildAccuracyBacktest(alerts), request });
+      return;
+    }
+    if (url.pathname === '/api/custom-alert-rules') {
+      if (req.method === 'GET') {
+        const rules = await listCustomAlertRules();
+        const prices = currentMarketPrices(request);
+        writeJson(res, { rules: evaluateCustomAlertRules(rules, prices), prices, request });
+        return;
+      }
+      if (req.method === 'POST') {
+        writeJson(res, { rule: await createCustomAlertRule(await readJsonBody(req)) }, 201);
+        return;
+      }
+      if (req.method === 'DELETE') {
+        writeJson(res, await deleteCustomAlertRule(url.searchParams.get('id')));
+        return;
+      }
+    }
+    if (url.pathname === '/api/portfolio/trades') {
+      if (req.method === 'GET') {
+        writeJson(res, summarizePortfolio(await listPortfolioTrades()));
+        return;
+      }
+      if (req.method === 'POST') {
+        writeJson(res, { trade: await createPortfolioTrade(await readJsonBody(req)) }, 201);
+        return;
+      }
+      if (req.method === 'DELETE') {
+        writeJson(res, await deletePortfolioTrade(url.searchParams.get('id')));
+        return;
+      }
+    }
+    if (url.pathname === '/api/portfolio/pnl') {
+      writeJson(res, summarizePortfolio(await listPortfolioTrades()));
       return;
     }
     writeJson(res, { error: 'Unknown API endpoint' }, 404);
@@ -75,6 +110,19 @@ function parseSignalRequest(url) {
     periods: numberParam(url, 'periods', 36),
     strategy,
   };
+}
+
+function currentMarketPrices(request) {
+  return Object.fromEntries(
+    buildTradingSignals(request).map((signal) => [signal.symbol, signal.entry]),
+  );
+}
+
+async function readJsonBody(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  if (!chunks.length) return {};
+  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
 function numberParam(url, key, fallback) {

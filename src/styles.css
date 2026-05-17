@@ -98,3 +98,5 @@ th { color: #94a3b8; font-size: 0.78rem; text-transform: uppercase; letter-spaci
 @media (max-width: 860px) {
   .accuracy-grid { grid-template-columns: 1fr; }
 }
+.custom-alert-builder, .portfolio-tracker { border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(15, 23, 42, 0.78); box-shadow: 0 20px 80px rgba(0, 0, 0, 0.28); backdrop-filter: blur(18px); border-radius: 24px; padding: 24px; margin: 28px 0; }
+.table-action { width: auto; padding: 8px 10px; border-radius: 10px; background: rgba(248, 113, 113, 0.2); color: #fecaca; }

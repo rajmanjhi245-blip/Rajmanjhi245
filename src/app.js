@@ -30,6 +30,11 @@ const simulationOutput = document.querySelector('#simulationOutput');
 const structureDashboard = document.querySelector('#structureDashboard');
 const alertHistoryEl = document.querySelector('#alertHistory');
 const accuracyBacktestEl = document.querySelector('#accuracyBacktest');
+const customAlertForm = document.querySelector('#customAlertForm');
+const customAlertRulesEl = document.querySelector('#customAlertRules');
+const portfolioTradeForm = document.querySelector('#portfolioTradeForm');
+const portfolioMetrics = document.querySelector('#portfolioMetrics');
+const portfolioTradesEl = document.querySelector('#portfolioTrades');
 
 let latestBacktest = null;
 
@@ -336,6 +341,89 @@ function renderAccuracyCard(row) {
   `;
 }
 
+async function renderPersistentTools() {
+  await Promise.all([renderCustomAlertRules(), renderPortfolioTracker()]);
+}
+
+async function renderCustomAlertRules() {
+  try {
+    const response = await fetch(`/api/custom-alert-rules?segmentId=${segmentSelect.value}&timeframe=${timeframeSelect.value}&seed=${Number(seedInput.value || 1)}`);
+    const { rules } = await response.json();
+    customAlertRulesEl.innerHTML = rules.length ? `
+      <table>
+        <thead><tr><th>Status</th><th>Symbol</th><th>Rule</th><th>Current</th><th>Note</th><th>Created</th><th></th></tr></thead>
+        <tbody>
+          ${rules.map((rule) => `
+            <tr>
+              <td>${rule.status}</td>
+              <td>${rule.symbol}</td>
+              <td>${rule.condition} ${formatValue(rule.threshold)}</td>
+              <td>${formatValue(rule.currentPrice)}</td>
+              <td>${rule.note || '—'}</td>
+              <td>${new Date(rule.createdAt).toLocaleString('en-IN')}</td>
+              <td><button class="table-action" type="button" data-delete-rule="${rule.id}">Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '<p class="empty-state">No custom alert rules saved yet.</p>';
+  } catch (error) {
+    customAlertRulesEl.innerHTML = `<p class="empty-state">Unable to load alert rules: ${error.message}</p>`;
+  }
+}
+
+async function renderPortfolioTracker() {
+  try {
+    const response = await fetch('/api/portfolio/trades');
+    const { trades, summary } = await response.json();
+    portfolioMetrics.innerHTML = `
+      <article><span>${formatMoney(summary.realizedPnl)}</span><small>Realized P&L</small></article>
+      <article><span>${summary.totalTrades}</span><small>Total trades</small></article>
+      <article><span>${summary.openTrades}</span><small>Open trades</small></article>
+      <article><span>${summary.closedTrades}</span><small>Closed trades</small></article>
+      <article><span>${summary.winRate}%</span><small>Win rate</small></article>
+      <article><span>${formatMoney(summary.investedCapital)}</span><small>Open capital</small></article>
+    `;
+    portfolioTradesEl.innerHTML = trades.length ? `
+      <table>
+        <thead><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>P&L</th><th>Signal</th><th>Opened</th><th></th></tr></thead>
+        <tbody>
+          ${trades.map((trade) => `
+            <tr>
+              <td>${trade.symbol}</td>
+              <td>${trade.side}</td>
+              <td>${formatValue(trade.quantity)}</td>
+              <td>${formatValue(trade.entryPrice)}</td>
+              <td>${formatValue(trade.exitPrice)}</td>
+              <td>${formatMoney(trade.pnl)}</td>
+              <td>${trade.signalId || '—'}</td>
+              <td>${new Date(trade.openedAt).toLocaleString('en-IN')}</td>
+              <td><button class="table-action" type="button" data-delete-trade="${trade.id}">Delete</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '<p class="empty-state">No portfolio trades logged yet.</p>';
+  } catch (error) {
+    portfolioTradesEl.innerHTML = `<p class="empty-state">Unable to load portfolio trades: ${error.message}</p>`;
+  }
+}
+
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error((await response.json()).error || 'Request failed');
+  return response.json();
+}
+
+async function deleteResource(url) {
+  const response = await fetch(url, { method: 'DELETE' });
+  if (!response.ok) throw new Error((await response.json()).error || 'Delete failed');
+}
+
 function runStrategyBacktest() {
   latestBacktest = runBacktest({
     segmentId: segmentSelect.value,
@@ -393,10 +481,11 @@ function renderSimulation(simulation) {
 populateControls();
 renderSignals();
 runStrategyBacktest();
-refreshButton.addEventListener('click', () => { renderSignals(); renderAlertAnalytics(); });
-segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
-timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); });
-seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); });
+renderPersistentTools();
+refreshButton.addEventListener('click', () => { renderSignals(); renderAlertAnalytics(); renderPersistentTools(); });
+segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
+timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
+seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
 liveMode.addEventListener('change', () => { renderSignals(); renderAlertAnalytics(); });
 presetSelect.addEventListener('change', () => { applyPreset(presetSelect.value); renderSignals(); runStrategyBacktest(); });
 [minConfidenceInput, minLiquidityInput, maxSpreadInput, riskRewardInput, riskPerTradeInput, maxTradesInput].forEach((input) => {
@@ -407,9 +496,49 @@ simulationButton.addEventListener('click', () => {
   if (!latestBacktest) runStrategyBacktest();
   renderSimulation(runMonteCarloSimulation(latestBacktest, { paths: 500, seed: Number(seedInput.value || 1) + 900 }));
 });
+customAlertForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await postJson('/api/custom-alert-rules', {
+    symbol: document.querySelector('#alertSymbol').value,
+    condition: document.querySelector('#alertCondition').value,
+    threshold: document.querySelector('#alertThreshold').value,
+    note: document.querySelector('#alertNote').value,
+  });
+  customAlertForm.reset();
+  await renderCustomAlertRules();
+});
+customAlertRulesEl.addEventListener('click', async (event) => {
+  const id = event.target.dataset.deleteRule;
+  if (id) {
+    await deleteResource(`/api/custom-alert-rules?id=${encodeURIComponent(id)}`);
+    await renderCustomAlertRules();
+  }
+});
+portfolioTradeForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  await postJson('/api/portfolio/trades', {
+    symbol: document.querySelector('#tradeSymbol').value,
+    side: document.querySelector('#tradeSide').value,
+    quantity: document.querySelector('#tradeQuantity').value,
+    entryPrice: document.querySelector('#tradeEntry').value,
+    exitPrice: document.querySelector('#tradeExit').value,
+    signalId: document.querySelector('#tradeSignalId').value,
+    note: document.querySelector('#tradeNote').value,
+  });
+  portfolioTradeForm.reset();
+  await renderPortfolioTracker();
+});
+portfolioTradesEl.addEventListener('click', async (event) => {
+  const id = event.target.dataset.deleteTrade;
+  if (id) {
+    await deleteResource(`/api/portfolio/trades?id=${encodeURIComponent(id)}`);
+    await renderPortfolioTracker();
+  }
+});
 setInterval(() => {
   if (liveMode.checked) {
     renderSignals();
     renderAlertAnalytics();
+    renderPersistentTools();
   }
 }, 30_000);

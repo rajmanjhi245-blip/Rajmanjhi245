@@ -80,6 +80,46 @@
 
       <section class="accuracy-backtest" id="accuracyBacktest" aria-live="polite" aria-label="Signal accuracy backtest"></section>
 
+      <section class="custom-alert-builder" aria-label="Custom price alert rule builder">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Custom alert rules</p>
+            <h2>Database-backed price threshold alerts</h2>
+            <p>Create symbol-specific rules independently of the signal engine, such as RELIANCE below 950.</p>
+          </div>
+        </div>
+        <form class="builder-controls" id="customAlertForm">
+          <label>Symbol <input id="alertSymbol" placeholder="RELIANCE" required /></label>
+          <label>Condition <select id="alertCondition"><option value="below">Drops below</option><option value="above">Breaks above</option></select></label>
+          <label>Threshold <input id="alertThreshold" type="number" min="0.01" step="0.01" value="950" required /></label>
+          <label>Note <input id="alertNote" placeholder="Optional context" /></label>
+          <button type="submit">Save Alert Rule</button>
+        </form>
+        <div class="trade-table" id="customAlertRules"></div>
+      </section>
+
+      <section class="portfolio-tracker" aria-label="Portfolio P&L tracker">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Portfolio P&L</p>
+            <h2>Log real trades taken from signals</h2>
+            <p>Track entries, quantities, optional exits, realized P&L, open positions, and position history over time.</p>
+          </div>
+        </div>
+        <form class="builder-controls" id="portfolioTradeForm">
+          <label>Symbol <input id="tradeSymbol" placeholder="NIFTY 50" required /></label>
+          <label>Side <select id="tradeSide"><option value="LONG">Long</option><option value="SHORT">Short</option></select></label>
+          <label>Quantity <input id="tradeQuantity" type="number" min="0.0001" step="0.0001" value="1" required /></label>
+          <label>Entry <input id="tradeEntry" type="number" min="0.01" step="0.01" required /></label>
+          <label>Exit <input id="tradeExit" type="number" min="0.01" step="0.01" placeholder="blank if open" /></label>
+          <label>Signal ID <input id="tradeSignalId" placeholder="optional" /></label>
+          <label>Note <input id="tradeNote" placeholder="optional" /></label>
+          <button type="submit">Log Trade</button>
+        </form>
+        <div class="metrics compact" id="portfolioMetrics"></div>
+        <div class="trade-table" id="portfolioTrades"></div>
+      </section>
+
       <section class="backtest-panel" aria-label="Backtest and simulation">
         <div class="panel-heading">
           <div>
@@ -103,7 +143,8 @@
           <li>Flow + trend + sentiment + options-skew composite scoring.</li>
           <li>Liquidity and spread-risk filters that can block weak signals.</li>
           <li>Liquidity sweep, break of structure, real/fake breakout, and real FVG identification filters.</li>
-          <li>Alert history tracking, market data API endpoints, signal API endpoints, and signal accuracy backtesting.</li>
+          <li>Alert history tracking, custom database-backed price alert rules, market/signal API endpoints, and signal accuracy backtesting.</li>
+          <li>Portfolio P&L tracking for logged real trades, quantities, exits, realized P&L, and position history.</li>
           <li>Explicit entry, stop-loss, three targets, derivative bias, and rationale.</li>
           <li>Works across multiple timeframes using the same deterministic risk engine.</li>
         </ul>
