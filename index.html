@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Institutional Signal Lab</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Multi-market sentiment intelligence</p>
+          <h1>Institutional Signal Lab</h1>
+          <p class="hero-copy">
+            Analyze Indian equities, crypto, and forex with sentiment, liquidity, options skew,
+            trend, and risk filters before any buy, sell, target, stop-loss, call, or put setup is shown.
+          </p>
+        </div>
+        <div class="disclaimer" role="note">
+          <strong>Reality check:</strong> no software can provide 100% accurate trading signals or a 0% fake-signal rate.
+          This lab is a disciplined decision-support system with confidence scoring and no-trade filters.
+        </div>
+      </section>
+
+      <section class="controls" aria-label="Signal controls">
+        <label>
+          Market segment
+          <select id="segment"></select>
+        </label>
+        <label>
+          Time frame
+          <select id="timeframe"></select>
+        </label>
+        <label>
+          Scenario seed
+          <input id="seed" type="number" min="1" step="1" value="245" />
+        </label>
+        <label class="toggle">
+          Live mode
+          <input id="liveMode" type="checkbox" checked />
+        </label>
+        <button id="refresh" type="button">Refresh Signals</button>
+      </section>
+
+      <section class="feed-status" aria-label="Live feed status">
+        <span class="pulse" aria-hidden="true"></span>
+        <span id="feedStatus">Live sentiment simulator connected · replace with licensed exchange, broker, news, and options feeds for production.</span>
+      </section>
+
+      <section class="metrics" aria-label="Signal summary">
+        <article><span id="buyCount">0</span><small>Buy setups</small></article>
+        <article><span id="sellCount">0</span><small>Sell setups</small></article>
+        <article><span id="waitCount">0</span><small>No-trade filters</small></article>
+        <article><span id="avgConfidence">0%</span><small>Avg confidence</small></article>
+      </section>
+
+      <section class="grid" id="signals" aria-live="polite"></section>
+
+      <section class="framework">
+        <h2>Institutional-grade checks</h2>
+        <ul>
+          <li>Flow + trend + sentiment + options-skew composite scoring.</li>
+          <li>Liquidity and spread-risk filters that can block weak signals.</li>
+          <li>Explicit entry, stop-loss, three targets, derivative bias, and rationale.</li>
+          <li>Works across multiple timeframes using the same deterministic risk engine.</li>
+        </ul>
+      </section>
+    </main>
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>
