@@ -1,4 +1,5 @@
 import { runBacktest, runMonteCarloSimulation } from './backtestEngine.js';
+import { analyzeMarketStructure } from './marketStructureEngine.js';
 import { MARKET_SEGMENTS, TIMEFRAMES, buildSignals, summarizeSignals } from './signalEngine.js';
 import { STRATEGY_PRESETS, buildStrategy, describeStrategy } from './strategyEngine.js';
 
@@ -26,6 +27,7 @@ const simulationButton = document.querySelector('#runSimulation');
 const backtestMetrics = document.querySelector('#backtestMetrics');
 const tradeTable = document.querySelector('#tradeTable');
 const simulationOutput = document.querySelector('#simulationOutput');
+const structureDashboard = document.querySelector('#structureDashboard');
 
 let latestBacktest = null;
 
@@ -103,7 +105,14 @@ function renderSignals() {
     ? `Live sentiment simulator refreshed at ${new Date().toLocaleTimeString('en-IN')}. Connect licensed market feeds for production execution.`
     : `Scenario seed ${seed} loaded for deterministic replay and testing.`;
 
-  signalsEl.innerHTML = signals.map((signal) => `
+  const structures = signals.map((signal) => ({
+    signal,
+    structure: analyzeMarketStructure({ seed: signal.sourceSeed, basePrice: signal.entry, volatility: Math.max(0.7, signal.confidence / 35) }),
+  }));
+
+  renderStructureDashboard(structures);
+
+  signalsEl.innerHTML = structures.map(({ signal, structure }) => `
     <article class="card ${signal.action.toLowerCase()}">
       <div class="card-top">
         <div>
@@ -123,9 +132,87 @@ function renderSignals() {
       <div class="confidence" aria-label="Confidence ${signal.confidence}%">
         <span style="width: ${signal.confidence}%"></span>
       </div>
+      <div class="structure-tags">
+        <span>${structure.liquiditySweep.detected ? 'Sweep' : 'No sweep'}: ${structure.liquiditySweep.direction}</span>
+        <span>BOS: ${structure.breakOfStructure.direction}</span>
+        <span>${structure.breakout.type} breakout</span>
+        <span>FVG: ${structure.latestFvg ? `${structure.latestFvg.direction} ${structure.latestFvg.status}` : 'none'}</span>
+      </div>
       <p class="rationale"><strong>Risk ${signal.riskGrade}</strong> · ${signal.confidence}% · ${signal.rationale}</p>
+      <p class="rationale"><strong>Structure:</strong> ${structure.summary}</p>
     </article>
   `).join('');
+}
+
+function renderStructureDashboard(structures) {
+  const primary = structures[0]?.structure;
+  if (!primary) {
+    structureDashboard.innerHTML = '';
+    return;
+  }
+
+  const activeFvgs = structures.flatMap(({ signal, structure }) =>
+    structure.fairValueGaps
+      .filter((gap) => gap.status === 'active')
+      .map((gap) => ({ ...gap, symbol: signal.symbol })),
+  );
+
+  structureDashboard.innerHTML = `
+    <div class="panel-heading">
+      <div>
+        <p class="eyebrow">Smart money structure</p>
+        <h2>Liquidity sweep, BOS, breakout, and FVG scanner</h2>
+        <p>Heuristic pattern confirmation uses wick rejection, swing closes, volume expansion, body expansion, and imbalance mitigation rules.</p>
+      </div>
+    </div>
+    <div class="structure-grid">
+      ${renderPatternCard(primary.liquiditySweep)}
+      ${renderPatternCard(primary.breakOfStructure)}
+      ${renderPatternCard(primary.breakout, primary.breakout.type === 'real' ? 'Real Breakout' : primary.breakout.type === 'fake' ? 'Fake Breakout' : 'Breakout')}
+      ${renderFvgCard(primary.latestFvg)}
+    </div>
+    <div class="fvg-list">
+      <h3>Active real FVG zones across watchlist</h3>
+      ${activeFvgs.length ? activeFvgs.slice(0, 8).map((gap) => `
+        <article>
+          <strong>${gap.symbol}</strong> ${gap.direction} · ${formatValue(gap.from)} → ${formatValue(gap.to)}
+          <span>${gap.confidence}% · ${gap.verdict}</span>
+        </article>
+      `).join('') : '<p class="empty-state">No active real FVG zone passed the current imbalance filters.</p>'}
+    </div>
+  `;
+}
+
+function renderPatternCard(pattern, title = pattern.name) {
+  return `
+    <article class="structure-card ${pattern.direction}">
+      <small>${title}</small>
+      <strong>${pattern.detected ? pattern.direction : 'not confirmed'}</strong>
+      <span>Level ${formatValue(pattern.level)} · ${pattern.confidence}%</span>
+      <p>${pattern.verdict}</p>
+    </article>
+  `;
+}
+
+function renderFvgCard(gap) {
+  if (!gap) {
+    return `
+      <article class="structure-card none">
+        <small>Real FVG</small>
+        <strong>not confirmed</strong>
+        <span>No active imbalance</span>
+        <p>No fair value gap passed size, impulse, and mitigation filters.</p>
+      </article>
+    `;
+  }
+  return `
+    <article class="structure-card ${gap.direction}">
+      <small>Real FVG</small>
+      <strong>${gap.direction} ${gap.status}</strong>
+      <span>${formatValue(gap.from)} → ${formatValue(gap.to)} · ${gap.confidence}%</span>
+      <p>${gap.verdict}</p>
+    </article>
+  `;
 }
 
 function runStrategyBacktest() {

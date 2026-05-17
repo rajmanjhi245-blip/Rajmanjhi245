@@ -13,6 +13,7 @@ Institutional Signal Lab is a browser-based trading-signal decision-support prot
 - Includes a strategy builder with balanced, conservative, and aggressive presets plus custom confidence, liquidity, spread-risk, risk/reward, risk-per-trade, and max-trade controls.
 - Adds synthetic backtesting with equity, return, win-rate, drawdown, profit-factor, expectancy, and trade-log outputs.
 - Adds Monte Carlo simulation paths to estimate best, median, worst, and positive-path outcomes from backtested trades.
+- Adds smart-money structure scanners for liquidity sweeps, break of structure, real breakouts, fake breakouts, and real fair value gaps.
 - Includes a live-mode simulator that refreshes every 30 seconds and a deterministic replay seed for testing.
 - Uses deterministic engines that can be connected to licensed live data APIs later.
 
@@ -32,4 +33,4 @@ npm test
 
 ## Live data integration notes
 
-The current implementation ships with deterministic signal, backtest, and simulation engines so it works without broker or exchange credentials. For production use, connect `src/signalEngine.js` and `src/backtestEngine.js` to licensed data providers for exchange prices, order flow, options chains, news sentiment, historical candles, corporate actions, and macro/FX feeds. Add broker-side validation, audit logging, kill switches, walk-forward validation, out-of-sample testing, and regulatory review before any real-money use.
+The current implementation ships with deterministic signal, market-structure, backtest, and simulation engines so it works without broker or exchange credentials. For production use, connect `src/signalEngine.js`, `src/marketStructureEngine.js`, and `src/backtestEngine.js` to licensed data providers for exchange prices, order flow, options chains, news sentiment, historical candles, corporate actions, and macro/FX feeds. Add broker-side validation, audit logging, kill switches, walk-forward validation, out-of-sample testing, and regulatory review before any real-money use.

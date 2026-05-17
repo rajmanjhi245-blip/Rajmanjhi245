@@ -129,13 +129,14 @@ function buildRationale(snapshot, composite, action) {
 export function buildSignals({ segmentId = 'india-equity', timeframe = '15m', seed = Date.now() / 60000, strategy = {} } = {}) {
   const segment = MARKET_SEGMENTS.find((item) => item.id === segmentId) || MARKET_SEGMENTS[0];
   return segment.assets.map((symbol, index) => {
+    const sourceSeed = seed + index * 17 + segment.id.length;
     const snapshot = createMarketSnapshot({
       symbol,
       segment: segment.label,
       timeframe,
-      seed: seed + index * 17 + segment.id.length,
+      seed: sourceSeed,
     });
-    return analyzeSignal(snapshot, strategy);
+    return { ...analyzeSignal(snapshot, strategy), sourceSeed };
   });
 }
 
