@@ -1,0 +1,23 @@
+{
+  "name": "institutional-signal-lab",
+  "version": "1.0.0",
+  "description": "Multi-market sentiment and risk-aware trading signal dashboard for Indian equities, crypto, and forex.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "trading",
+    "signals",
+    "sentiment",
+    "risk",
+    "india",
+    "crypto",
+    "forex"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
