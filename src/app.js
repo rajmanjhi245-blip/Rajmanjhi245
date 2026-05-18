@@ -28,6 +28,7 @@ const backtestMetrics = document.querySelector('#backtestMetrics');
 const tradeTable = document.querySelector('#tradeTable');
 const simulationOutput = document.querySelector('#simulationOutput');
 const structureDashboard = document.querySelector('#structureDashboard');
+const researchTerminal = document.querySelector('#researchTerminal');
 const alertHistoryEl = document.querySelector('#alertHistory');
 const accuracyBacktestEl = document.querySelector('#accuracyBacktest');
 const customAlertForm = document.querySelector('#customAlertForm');
@@ -221,6 +222,53 @@ function renderFvgCard(gap) {
       <p>${gap.verdict}</p>
     </article>
   `;
+}
+
+async function renderResearchTerminal() {
+  try {
+    const seed = Number(seedInput.value || 1);
+    const [dashboardRes, companyRes, optionsRes, sectorsRes] = await Promise.all([
+      fetch(`/api/research-dashboard?segmentId=${segmentSelect.value}&timeframe=${timeframeSelect.value}&seed=${seed}`),
+      fetch(`/api/company-analysis?symbol=RELIANCE&segmentId=${segmentSelect.value}&timeframe=1D&seed=${seed}`),
+      fetch(`/api/options-chain?symbol=NIFTY%2050&seed=${seed}&spot=23600`),
+      fetch(`/api/sector-rotation?seed=${seed}`),
+    ]);
+    const { dashboard, featureMatrix } = await dashboardRes.json();
+    const { analysis } = await companyRes.json();
+    const { options } = await optionsRes.json();
+    const { sectors } = await sectorsRes.json();
+    researchTerminal.innerHTML = `
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Research terminal</p>
+          <h2>Screener, fundamentals, sectors, events, and options lab</h2>
+          <p>Feature-inspired research suite; not a copy of any third-party platform. Data is deterministic until licensed feeds are connected.</p>
+        </div>
+      </div>
+      <div class="metrics compact">
+        <article><span>${dashboard.marketMood.label}</span><small>Market mood ${dashboard.marketMood.score}</small></article>
+        <article><span>${dashboard.marketMood.breadth}%</span><small>Positive breadth</small></article>
+        <article><span>${options.pcr}</span><small>Options PCR</small></article>
+        <article><span>${options.maxPain}</span><small>Max pain</small></article>
+        <article><span>${formatValue(options.atmStraddle)}</span><small>ATM straddle</small></article>
+        <article><span>${options.ivSkew}%</span><small>IV skew</small></article>
+      </div>
+      <div class="research-grid">
+        <article class="research-card"><h3>Today's stocks</h3>${renderMiniList('Gainers', dashboard.todaysStocks.gainers)}${renderMiniList('Losers', dashboard.todaysStocks.losers)}</article>
+        <article class="research-card"><h3>Curated screens</h3>${dashboard.curatedScreens.map((screen) => `<p><strong>${screen.name}</strong><span>${screen.description}</span><small>${screen.matches.length} matches</small></p>`).join('')}</article>
+        <article class="research-card"><h3>Company analysis: ${analysis.stock.symbol}</h3><p>P/E ${analysis.stock.pe} · ROE ${analysis.stock.roe}% · D/E ${analysis.stock.debtToEquity}</p><p>Valuation ${analysis.scores.valuation} · Quality ${analysis.scores.quality} · Momentum ${analysis.scores.momentum}</p><p>${analysis.notes.join(' ')}</p></article>
+        <article class="research-card"><h3>Sector rotation</h3>${sectors.map((sector) => `<p><strong>${sector.sector}</strong><span>${sector.quadrant} · RS ${sector.relativeStrength} · Mom ${sector.momentum}</span></p>`).join('')}</article>
+        <article class="research-card"><h3>Options chain sample</h3><div class="trade-table"><table><thead><tr><th>Strike</th><th>Call OI</th><th>Call IV</th><th>Put OI</th><th>Put IV</th></tr></thead><tbody>${options.chain.slice(3, 8).map((row) => `<tr><td>${row.strike}</td><td>${formatValue(row.call.oi)}</td><td>${row.call.iv}%</td><td>${formatValue(row.put.oi)}</td><td>${row.put.iv}%</td></tr>`).join('')}</tbody></table></div></article>
+        <article class="research-card"><h3>Events & feature map</h3>${dashboard.events.map((event) => `<p><strong>${event.symbol}</strong><span>${event.type} · ${event.impact} impact · T+${event.dueInDays}</span></p>`).join('')}<hr />${featureMatrix.map((feature) => `<p><strong>${feature.source}</strong><span>${feature.implemented.join(', ')}</span></p>`).join('')}</article>
+      </div>
+    `;
+  } catch (error) {
+    researchTerminal.innerHTML = `<p class="empty-state">Unable to load research terminal: ${error.message}</p>`;
+  }
+}
+
+function renderMiniList(title, stocks) {
+  return `<h4>${title}</h4>${stocks.map((stock) => `<p><strong>${stock.symbol}</strong><span>${stock.changePct}% · ₹${formatValue(stock.entry)} · score ${stock.score}</span></p>`).join('')}`;
 }
 
 function currentRequest() {
@@ -482,12 +530,13 @@ populateControls();
 renderSignals();
 runStrategyBacktest();
 renderPersistentTools();
-refreshButton.addEventListener('click', () => { renderSignals(); renderAlertAnalytics(); renderPersistentTools(); });
-segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
-timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
-seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); });
+renderResearchTerminal();
+refreshButton.addEventListener('click', () => { renderSignals(); renderAlertAnalytics(); renderPersistentTools(); renderResearchTerminal(); });
+segmentSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); renderResearchTerminal(); });
+timeframeSelect.addEventListener('change', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); renderResearchTerminal(); });
+seedInput.addEventListener('input', () => { renderSignals(); runStrategyBacktest(); renderPersistentTools(); renderResearchTerminal(); });
 liveMode.addEventListener('change', () => { renderSignals(); renderAlertAnalytics(); });
-presetSelect.addEventListener('change', () => { applyPreset(presetSelect.value); renderSignals(); runStrategyBacktest(); });
+presetSelect.addEventListener('change', () => { applyPreset(presetSelect.value); renderSignals(); runStrategyBacktest(); renderResearchTerminal(); });
 [minConfidenceInput, minLiquidityInput, maxSpreadInput, riskRewardInput, riskPerTradeInput, maxTradesInput].forEach((input) => {
   input.addEventListener('input', () => { updateStrategyDescription(); renderSignals(); renderAlertAnalytics(); });
 });
@@ -540,5 +589,6 @@ setInterval(() => {
     renderSignals();
     renderAlertAnalytics();
     renderPersistentTools();
+    renderResearchTerminal();
   }
 }, 30_000);

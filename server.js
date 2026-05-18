@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { buildAccuracyBacktest, buildAlertHistory, buildTradingSignals, listMarketSegments } from './src/alertEngine.js';
 import { createCustomAlertRule, createPortfolioTrade, deleteCustomAlertRule, deletePortfolioTrade, evaluateCustomAlertRules, listCustomAlertRules, listPortfolioTrades, summarizePortfolio } from './src/databaseEngine.js';
+import { buildCompanyAnalysis, buildOptionsAnalytics, buildPlatformFeatureMatrix, buildResearchDashboard, buildSectorRotation, runStockScreener } from './src/researchEngine.js';
 import { buildStrategy } from './src/strategyEngine.js';
 
 const port = Number(process.env.PORT || 4173);
@@ -89,6 +90,26 @@ async function handleApi(req, url, res) {
     }
     if (url.pathname === '/api/portfolio/pnl') {
       writeJson(res, summarizePortfolio(await listPortfolioTrades()));
+      return;
+    }
+    if (url.pathname === '/api/research-dashboard') {
+      writeJson(res, { dashboard: buildResearchDashboard(request), featureMatrix: buildPlatformFeatureMatrix(), request });
+      return;
+    }
+    if (url.pathname === '/api/screener') {
+      writeJson(res, { results: runStockScreener({ ...request, screenId: url.searchParams.get('screenId') || 'momentum-breakout', filters: Object.fromEntries(url.searchParams) }), request });
+      return;
+    }
+    if (url.pathname === '/api/company-analysis') {
+      writeJson(res, { analysis: buildCompanyAnalysis({ ...request, symbol: url.searchParams.get('symbol') || 'RELIANCE' }), request });
+      return;
+    }
+    if (url.pathname === '/api/options-chain') {
+      writeJson(res, { options: buildOptionsAnalytics({ symbol: url.searchParams.get('symbol') || 'NIFTY 50', seed: request.seed, spot: numberParam(url, 'spot', 23600) }), request });
+      return;
+    }
+    if (url.pathname === '/api/sector-rotation') {
+      writeJson(res, { sectors: buildSectorRotation({ seed: request.seed }), request });
       return;
     }
     writeJson(res, { error: 'Unknown API endpoint' }, 404);
